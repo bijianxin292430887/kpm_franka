@@ -1,0 +1,49 @@
+_target_: agent.df_policy.DF_Policy_Agent
+_recursive_: false
+
+
+device: ${device}
+
+model:
+  _target_: agent.df_policy.DF_Policy
+  _recursive_: false
+
+  visual_input: True
+  device: ${device}
+
+  input_dim: 7
+
+  diffusion_opt:
+    beta_max: 0.3
+    interval: 50
+    device: ${device}
+    ema: 0.9
+
+  obs_encoder:
+    _target_: agent.obs_encoder.ImageEncoder
+    embedding_dim: 256
+
+trainset:
+  _target_: spoon_dataset.ProcessedDataset
+  dataset_path: ${train_dataset_path}
+  img_data: True
+  raw_img: True
+
+valset:
+  _target_: spoon_dataset.ProcessedDataset
+  dataset_path: ${test_dataset_path}
+  img_data: True
+  raw_img: True
+  normalization: False
+
+
+optimization:
+  _target_: torch.optim.AdamW
+  lr: 1e-4
+  weight_decay: 0
+
+train_batch_size: 64
+val_batch_size: 64
+num_workers: 2
+epoch: 300
+eval_every_n_epochs: 10
