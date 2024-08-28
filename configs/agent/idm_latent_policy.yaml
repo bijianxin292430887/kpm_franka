@@ -1,0 +1,50 @@
+_target_: agent.idm_latent_policy.IDM_Latent_Policy_Agent
+_recursive_: false
+
+
+device: ${device}
+
+model:
+  _target_: agent.idm_latent_policy.IDM_Latent_Policy
+  _recursive_: false
+
+  visual_input: True
+  device: ${device}
+
+  input_dim: 7
+
+  diffusion_opt:
+    beta_max: 0.3
+    interval: 50
+    device: ${device}
+    ema: 0.9
+
+  obs_encoder:
+    _target_: agent.obs_encoder.ImageEncoder
+    embedding_dim: 128
+
+trainset:
+  _target_: spoon_dataset.MergedDataset
+  dataset_path_A: ${train_dataset_path_A}
+  dataset_path_B: ${train_dataset_path_B}
+  img_data: True
+  normalization: True
+
+valset:
+  _target_: spoon_dataset.MergedDataset
+  dataset_path_A: ${test_dataset_path_A}
+  dataset_path_B: ${test_dataset_path_B}
+  img_data: True
+  normalization: False
+
+
+optimization:
+  _target_: torch.optim.AdamW
+  lr: 1e-4
+  weight_decay: 0
+
+train_batch_size: 256
+val_batch_size: 256
+num_workers: 4
+epoch: 500
+eval_every_n_epochs: 10
