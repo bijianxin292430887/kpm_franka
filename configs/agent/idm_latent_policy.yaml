@@ -21,20 +21,34 @@ model:
 
   obs_encoder:
     _target_: agent.obs_encoder.ImageEncoder
-    embedding_dim: 128
+    embedding_dim: 256
+
+#trainset:
+#  _target_: spoon_dataset.MergedDataset
+#  dataset_path_A: ${train_dataset_path_A}
+#  dataset_path_B: ${train_dataset_path_B}
+#  img_data: True
+#  normalization: True
+#
+#valset:
+#  _target_: spoon_dataset.MergedDataset
+#  dataset_path_A: ${test_dataset_path_A}
+#  dataset_path_B: ${test_dataset_path_B}
+#  img_data: True
+#  normalization: False
 
 trainset:
-  _target_: spoon_dataset.MergedDataset
-  dataset_path_A: ${train_dataset_path_A}
-  dataset_path_B: ${train_dataset_path_B}
+  _target_: spoon_dataset.ProcessedDataset
+  dataset_path: ${train_dataset_path}
   img_data: True
   normalization: True
+  raw_img: True
 
 valset:
-  _target_: spoon_dataset.MergedDataset
-  dataset_path_A: ${test_dataset_path_A}
-  dataset_path_B: ${test_dataset_path_B}
+  _target_: spoon_dataset.ProcessedDataset
+  dataset_path: ${test_dataset_path}
   img_data: True
+  raw_img: True
   normalization: False
 
 
@@ -46,5 +60,5 @@ optimization:
 train_batch_size: 256
 val_batch_size: 256
 num_workers: 4
-epoch: 500
+epoch: 1000
 eval_every_n_epochs: 10
