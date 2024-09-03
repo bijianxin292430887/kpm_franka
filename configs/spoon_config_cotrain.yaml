@@ -9,10 +9,14 @@ log_dir: logs/spoon/
 seed: 42
 action_data_ratio: 2
 
-train_dataset_path_A: /home/allenbi/PycharmProjects24/mm_data/wood_spoon/train_robot_dataset.h5
-train_dataset_path_B: /home/allenbi/PycharmProjects24/mm_data/wood_spoon/train_human_dataset.h5
-test_dataset_path_A: /home/allenbi/PycharmProjects24/mm_data/wood_spoon/test_robot_dataset.h5
-test_dataset_path_B: /home/allenbi/PycharmProjects24/mm_data/wood_spoon/test_human_dataset.h5
+#train_dataset_path_A: /home/allenbi/PycharmProjects24/mm_data/wood_spoon/train_robot_dataset.h5
+#train_dataset_path_B: /home/allenbi/PycharmProjects24/mm_data/wood_spoon/train_human_dataset.h5
+#test_dataset_path_A: /home/allenbi/PycharmProjects24/mm_data/wood_spoon/test_robot_dataset.h5
+#test_dataset_path_B: /home/allenbi/PycharmProjects24/mm_data/wood_spoon/test_human_dataset.h5
+
+
+train_dataset_path: /home/allenbi/PycharmProjects24/mm_data/wood_spoon_830/train_robot_dataset.h5
+test_dataset_path: /home/allenbi/PycharmProjects24/mm_data/wood_spoon_830/test_robot_dataset.h5
 
 hydra:
   run:
@@ -32,6 +36,7 @@ group: spoon_${agent_name}
 backbone: 'lstm'
 # Action Decoder Network
 hidden_dims: [256]
+
 # FSQ
 fsq_levels: [6,6,6,6]
 fsq_latent_dim: 4
@@ -43,7 +48,7 @@ vae_latent_dim: 4
 kl_factor: 0.0001
 #Koopman
 kpm_latent_dim: 256
-target_k: -1
+target_k: 4
 
 #Cotrain
 action_loss_factor: 0.01
@@ -67,18 +72,18 @@ window_size: 1
 
 obs_mask_dim: [0]
 ## Dataset
-trainset:
-  _target_: spoon_dataset.MergedDataset
-  dataset_path_A: ${train_dataset_path_A}
-  dataset_path_B: ${train_dataset_path_B}
-  img_data: True
-
-valset:
-  _target_: spoon_dataset.MergedDataset
-  dataset_path_A: ${test_dataset_path_A}
-  dataset_path_B: ${test_dataset_path_B}
-  img_data: True
-  normalization: False
+#trainset:
+#  _target_: spoon_dataset.MergedDataset
+#  dataset_path_A: ${train_dataset_path_A}
+#  dataset_path_B: ${train_dataset_path_B}
+#  img_data: True
+#
+#valset:
+#  _target_: spoon_dataset.MergedDataset
+#  dataset_path_A: ${test_dataset_path_A}
+#  dataset_path_B: ${test_dataset_path_B}
+#  img_data: True
+#  normalization: False
 #
 #totalset:
 #  _target_: spoon_dataset.ProcessedDataset

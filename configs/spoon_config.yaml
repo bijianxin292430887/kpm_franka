@@ -9,8 +9,8 @@ log_dir: logs/spoon/
 seed: 42
 action_data_ratio: 2
 
-train_dataset_path: /home/allenbi/PycharmProjects24/mm_data/wood_spoon/train_robot_dataset.h5
-test_dataset_path: /home/allenbi/PycharmProjects24/mm_data/wood_spoon/test_robot_dataset.h5
+train_dataset_path: /home/allenbi/PycharmProjects24/mm_data/wood_spoon_830/train_robot_dataset.h5
+test_dataset_path: /home/allenbi/PycharmProjects24/mm_data/wood_spoon_830/test_robot_dataset.h5
 
 hydra:
   run:

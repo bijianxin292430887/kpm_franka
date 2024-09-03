@@ -2,7 +2,8 @@ import h5py
 import numpy as np
 import torch
 from torch.utils.data import Dataset, DataLoader
-
+from PIL import Image
+import cv2
 def data_normalize(data, normalization_params, data_category='poses'):
     """
     Normalize the data using the provided min and max values to scale to [-1, 1].
@@ -58,7 +59,10 @@ class ProcessedDataset(Dataset):
         self.normalization = normalization
         self.img_data = img_data
         self.raw_img = raw_img
-        self.crop_img_mask = [278, 458, 310, 550]
+
+        self.bowl_mask = [ 80, 170, 125, 235] #bowl
+        self.env_mask = [0,200,80,280]
+        self.reduced_resolution=(128, 128)
 
         self.device = "cuda"
         self.data = self.load_data()
@@ -76,45 +80,48 @@ class ProcessedDataset(Dataset):
             dict: A dictionary containing the loaded spoon poses, masked images, and robot joints.
         """
         data = {}
+
         with h5py.File(self.h5_file_path, 'r') as f:
             for episode in f.keys():
                 spoon_poses = f[episode]['spoon_poses'][:]
-                masked_images = f[episode]['masked_images'][:] / 255
+                camera_images = f[episode]['images'][:]
                 robot_joints = f[episode]['robot_joints'][:]
+                # cv2.imshow('test',masked_images[0])
+                # if cv2.waitKey(1000000) & 0xFF == ord('q'):
+                #     break
 
                 # Convert structured array to a regular ndarray
                 spoon_poses = np.stack([pose for pose in spoon_poses['pose']])[:, :, 0]
 
-                # import cv2
-                # cv2.imshow('Image', cropped_image)
-                # cv2.waitKey(0)
-                # cv2.destroyAllWindows()
 
                 if self.img_data:
                     if self.raw_img:
-
-                        data[episode] = {
-                            'spoon_poses': spoon_poses,
-                            'masked_images': masked_images,
-                            'robot_joints': robot_joints
-                        }
-
-
+                        self.crop_mask = self.env_mask
                     else:
+                        self.crop_mask = self.bowl_mask
 
-                        # Apply the fixed mask to crop all images
-                        cropped_images = []
-                        for img in masked_images:
-                            cropped_image = img[self.crop_img_mask[0]:self.crop_img_mask[1],
-                                            self.crop_img_mask[2]:self.crop_img_mask[3]]
-                            cropped_images.append(cropped_image)
-                        cropped_images = np.array(cropped_images)
+                    cropped_images = []
+                    for img in camera_images:
+                        cropped_image = img[self.crop_mask[0]:self.crop_mask[1],
+                                        self.crop_mask[2]:self.crop_mask[3]]
 
-                        data[episode] = {
-                            'spoon_poses': spoon_poses,
-                            'masked_images': cropped_images,
-                            'robot_joints': robot_joints
-                        }
+                        # Resize the image
+                        pil_img = Image.fromarray((cropped_image).astype(np.uint8))
+                        resized_img = pil_img.resize(self.reduced_resolution, Image. Resampling.LANCZOS)
+                        cropped_images.append(np.array(resized_img) / 255.0)
+
+                        # cv2.imshow('Image', np.array(resized_img))
+                        # if cv2.waitKey(0) & 0xFF == ord('q'):
+                        #     break
+                        # cv2.destroyAllWindows()
+
+                    cropped_images = np.array(cropped_images)
+
+                    data[episode] = {
+                        'spoon_poses': spoon_poses,
+                        'images': cropped_images,
+                        'robot_joints': robot_joints
+                    }
 
                 else:
                     data[episode] = {
@@ -171,7 +178,7 @@ class ProcessedDataset(Dataset):
         Returns:
             list: A list of subsequences, each containing spoon poses, masked images, robot joints, and masks.
         """
-        subsequences_interval = 4
+        subsequences_interval = 1
         subsequences = []
         for episode, episode_data in self.data.items():
             # (Your subsequence creation code remains the same, with the addition of masks)
@@ -188,7 +195,7 @@ class ProcessedDataset(Dataset):
 
             if self.img_data:
 
-                masked_images = episode_data['masked_images'][2:]
+                masked_images = episode_data['images'][2:]
                 for i in range(0, num_subsequences * subsequences_interval, subsequences_interval):
                     subsequence = {
                         'spoon_poses': torch.tensor(spoon_poses[i:i + self.subsequence_length], dtype=torch.float32),
@@ -240,6 +247,8 @@ class MergedDataset(Dataset):
         self.device = "cuda"
 
         self.crop_img_mask = [278, 458, 310, 550]
+        self.env_mask = [120, 480, 280, 640]
+        self.reduced_resolution = (128, 128)
 
         # Load data from both datasets
         self.data_A = self.load_data(self.dataset_path_A)
@@ -269,9 +278,9 @@ class MergedDataset(Dataset):
         data = {}
         with h5py.File(dataset_path, 'r') as f:
             for episode in f.keys():
-
                 spoon_poses = f[episode]['spoon_poses'][:]
-                masked_images = f[episode]['masked_images'][:]/255
+                # masked_images = f[episode]['masked_images'][:]
+                camera_images = f[episode]['images'][:]
                 robot_joints = f[episode]['robot_joints'][:]
 
                 # Convert structured array to a regular ndarray
@@ -285,26 +294,44 @@ class MergedDataset(Dataset):
                 if self.img_data:
                     if self.raw_img:
 
-                        data[episode] = {
-                            'spoon_poses': spoon_poses,
-                            'masked_images': masked_images,
-                            'robot_joints': robot_joints
-                        }
-
-
-                    else:
-
-                        # Apply the fixed mask to crop all images
                         cropped_images = []
-                        for img in masked_images:
-                            cropped_image = img[self.crop_img_mask[0]:self.crop_img_mask[1],
-                                            self.crop_img_mask[2]:self.crop_img_mask[3]]
+                        for img in camera_images:
+                            cropped_image = img[self.env_mask[0]:self.env_mask[1],
+                                            self.env_mask[2]:self.env_mask[3]]
+
+                            # Resize the image
+                            pil_img = Image.fromarray((cropped_image).astype(np.uint8))
+                            resized_img = pil_img.resize(self.reduced_resolution, Image.ANTIALIAS)
+                            cropped_images.append(np.array(resized_img) / 255.0)
+
                             cropped_images.append(cropped_image)
                         cropped_images = np.array(cropped_images)
 
                         data[episode] = {
                             'spoon_poses': spoon_poses,
-                            'masked_images': cropped_images,
+                            'images': cropped_images,
+                            'robot_joints': robot_joints
+                        }
+
+                    else:
+
+                        # Apply the fixed mask to crop all images
+                        cropped_images = []
+                        for img in camera_images:
+                            cropped_image = img[self.crop_img_mask[0]:self.crop_img_mask[1],
+                                            self.crop_img_mask[2]:self.crop_img_mask[3]]
+                            # cropped_images.append(cropped_image)
+
+                            # Resize the image
+                            pil_img = Image.fromarray((cropped_image).astype(np.uint8))
+                            resized_img = pil_img.resize(self.reduced_resolution, Image.ANTIALIAS)
+                            cropped_images.append(np.array(resized_img) / 255.0)
+
+                        cropped_images = np.array(cropped_images)
+
+                        data[episode] = {
+                            'spoon_poses': spoon_poses,
+                            'images': cropped_images,
                             'robot_joints': robot_joints
                         }
 
@@ -313,7 +340,6 @@ class MergedDataset(Dataset):
                         'spoon_poses': spoon_poses,
                         'robot_joints': robot_joints
                     }
-        return data
 
     def merge_datasets(self):
         """
@@ -402,7 +428,7 @@ class MergedDataset(Dataset):
 
             if self.img_data:
 
-                masked_images = episode_data['masked_images'][2:]
+                masked_images = episode_data['images'][2:]
                 for i in range(0, num_subsequences * subsequences_interval, subsequences_interval):
                     subsequence = {
                         'spoon_poses': torch.tensor(spoon_poses[i:i + self.subsequence_length], dtype=torch.float32),
@@ -435,21 +461,28 @@ class MergedDataset(Dataset):
 
 # Example usage
 if __name__ == "__main__":
-    dataset_path_A = 'wood_spoon/train_robot_dataset.h5'
-    dataset_path_B = 'wood_spoon/train_human_dataset.h5'
-    dataset = MergedDataset(dataset_path_A, dataset_path_B, subsequence_length=16, normalization=True)
-    dataloader = DataLoader(dataset, batch_size=128, shuffle=True, pin_memory=True, num_workers=1)
+    # dataset_path_A = 'wood_spoon/train_robot_dataset.h5'
+    # dataset_path_B = 'wood_spoon/train_human_dataset.h5'
+    # dataset = MergedDataset(dataset_path_A, dataset_path_B, subsequence_length=16, normalization=True)
+    # dataloader = DataLoader(dataset, batch_size=128, shuffle=True, pin_memory=True, num_workers=1)
+    #
+    # for batch in dataloader:
+    #     spoon_poses = batch['spoon_poses'].cuda()
+    #     robot_joints = batch['robot_joints'].cuda()
+    #     mask = batch['mask'].cuda()
+    #
+    #     print(spoon_poses[0].shape)
+
+    dataset_path_A = 'wood_spoon_830/train_robot_dataset.h5'
+    dataset = ProcessedDataset(dataset_path_A, subsequence_length=16, normalization=True,img_data=True,raw_img=True)
+    dataloader = DataLoader(dataset, batch_size=256, shuffle=True, pin_memory=True, num_workers=1)
 
     for batch in dataloader:
         spoon_poses = batch['spoon_poses'].cuda()
         robot_joints = batch['robot_joints'].cuda()
-        mask = batch['mask'].cuda()
+        masked_images = batch['masked_images'].cuda()
 
         print(spoon_poses[0].shape)
-
-        # Your training logic here
-        # model_output = model(spoon_poses, robot_joints, mask)
-
 
 
 # Example usage
